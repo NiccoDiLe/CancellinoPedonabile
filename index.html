@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 
@@ -59,10 +60,6 @@
     p {
       color: #555;
     }
-
-    /* ========================================================
-       SLIDER
-       ======================================================== */
 
     .slider {
       position: relative;
@@ -182,13 +179,9 @@
     <h1>🚪 Pedestrian Gate</h1>
 
     <p>
-      Slide the button when you are standing in front of the gate.
+      Slide the button to open the gate.
     </p>
 
-
-    <!-- ======================================================
-         SLIDER
-         ====================================================== -->
 
     <div
       id="openSlider"
@@ -217,70 +210,28 @@
   <script>
 
     // ==========================================================
-    // CONFIGURATION
+    // CLOUDFLARE WORKER
     // ==========================================================
 
-    // URL DEL TUO WORKER CLOUDFLARE
     const WORKER_URL =
       "https://cancellino-pedonabile.batnicco2004.workers.dev/";
 
 
     // ==========================================================
-    // COORDINATES OF THE GATE
+    // ELEMENTI SLIDER
     // ==========================================================
 
-    const TARGET_LAT = 43.8206059;
-    const TARGET_LON = 11.1387121;
+    const slider =
+      document.getElementById("openSlider");
 
+    const handle =
+      document.getElementById("sliderHandle");
 
-    // Maximum allowed distance
-    const MAX_DISTANCE_METERS = 75;
-
-
-    // ==========================================================
-    // CALCULATE GPS DISTANCE
-    // ==========================================================
-
-    function calcolaDistanza(
-      lat1,
-      lon1,
-      lat2,
-      lon2
-    ) {
-
-      const R = 6371000;
-
-      const rad = Math.PI / 180;
-
-      const dLat =
-        (lat2 - lat1) * rad;
-
-      const dLon =
-        (lon2 - lon1) * rad;
-
-      const a =
-        Math.sin(dLat / 2) *
-        Math.sin(dLat / 2) +
-
-        Math.cos(lat1 * rad) *
-        Math.cos(lat2 * rad) *
-
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-      return (
-        R *
-        2 *
-        Math.atan2(
-          Math.sqrt(a),
-          Math.sqrt(1 - a)
-        )
-      );
-    }
+    let dragging = false;
 
 
     // ==========================================================
-    // MESSAGE
+    // MESSAGGIO
     // ==========================================================
 
     function mostraMessaggio(
@@ -298,316 +249,34 @@
 
 
     // ==========================================================
-    // OPEN GATE
+    // RESET SLIDER
     // ==========================================================
 
-    async function apriCancello() {
+    function resetSlider() {
 
-      const slider =
-        document.getElementById("openSlider");
+      dragging = false;
 
-      const handle =
-        document.getElementById("sliderHandle");
+      handle.style.left = "6px";
 
-
-      // --------------------------------------------------------
-      // 1. CHECK WORKER CONFIGURATION
-      // --------------------------------------------------------
-
-      if (
-        !WORKER_URL ||
-        WORKER_URL.includes("INSERISCI_QUI")
-      ) {
-
-        mostraMessaggio(
-          "Worker configuration missing.",
-          "error"
-        );
-
-        resetSlider();
-
-        return;
-      }
-
-
-      // --------------------------------------------------------
-      // 2. GET PASS FROM URL
-      // --------------------------------------------------------
-
-      const params =
-        new URLSearchParams(
-          window.location.search
-        );
-
-      const pass =
-        params.get("pass");
-
-
-      if (!pass) {
-
-        mostraMessaggio(
-          "Invalid link.",
-          "error"
-        );
-
-        resetSlider();
-
-        return;
-      }
-
-
-      // --------------------------------------------------------
-      // 3. CHECK GPS SUPPORT
-      // --------------------------------------------------------
-
-      if (!navigator.geolocation) {
-
-        mostraMessaggio(
-          "Geolocation is not supported.",
-          "error"
-        );
-
-        resetSlider();
-
-        return;
-      }
-
-
-      // Disable slider during the procedure
-      slider.classList.add("disabled");
-
-
-      mostraMessaggio(
-        "Checking your location...",
-        "info"
-      );
-
-
-      // --------------------------------------------------------
-      // 4. REQUEST LOCATION
-      // --------------------------------------------------------
-
-      navigator.geolocation.getCurrentPosition(
-
-        async (pos) => {
-
-          const userLat =
-            pos.coords.latitude;
-
-          const userLon =
-            pos.coords.longitude;
-
-
-          // ----------------------------------------------------
-          // 5. LOCAL GPS CHECK
-          // ----------------------------------------------------
-
-          const distanza =
-            calcolaDistanza(
-              userLat,
-              userLon,
-              TARGET_LAT,
-              TARGET_LON
-            );
-
-
-          if (
-            distanza >
-            MAX_DISTANCE_METERS
-          ) {
-
-            mostraMessaggio(
-              `You are too far away (${Math.round(distanza)} m).`,
-              "error"
-            );
-
-            resetSlider();
-
-            return;
-          }
-
-
-          // ----------------------------------------------------
-          // 6. SEND REQUEST TO WORKER
-          // ----------------------------------------------------
-
-          mostraMessaggio(
-            "Opening gate...",
-            "info"
-          );
-
-
-          try {
-
-            const response =
-              await fetch(
-                WORKER_URL,
-                {
-                  method: "POST",
-
-                  headers: {
-                    "Content-Type": "application/json"
-                  },
-
-                  body: JSON.stringify({
-                    pass: pass,
-                    lat: userLat,
-                    lon: userLon
-                  })
-                }
-              );
-
-
-            // --------------------------------------------------
-            // 7. READ WORKER RESPONSE
-            // --------------------------------------------------
-
-            let data = null;
-
-            try {
-
-              data =
-                await response.json();
-
-            } catch (error) {
-
-              data = null;
-            }
-
-
-            // --------------------------------------------------
-            // 8. RESULT
-            // --------------------------------------------------
-
-            if (
-              response.ok &&
-              data &&
-              data.success
-            ) {
-
-              mostraMessaggio(
-                "Gate opened!",
-                "ok"
-              );
-
-            } else {
-
-              mostraMessaggio(
-                data?.message ||
-                "Access denied.",
-                "error"
-              );
-            }
-
-
-          } catch (error) {
-
-            console.error(
-              "Worker communication error:",
-              error
-            );
-
-            mostraMessaggio(
-              "Connection error.",
-              "error"
-            );
-
-          } finally {
-
-            resetSlider();
-
-          }
-
-        },
-
-
-        // ------------------------------------------------------
-        // GPS ERROR
-        // ------------------------------------------------------
-
-        (error) => {
-
-          console.error(
-            "GPS error:",
-            error
-          );
-
-          let messaggio =
-            "Unable to get your location.";
-
-          if (
-            error.code ===
-            error.PERMISSION_DENIED
-          ) {
-
-            messaggio =
-              "You must allow location access to open the gate.";
-
-          } else if (
-            error.code ===
-            error.POSITION_UNAVAILABLE
-          ) {
-
-            messaggio =
-              "GPS location is not available.";
-
-          } else if (
-            error.code ===
-            error.TIMEOUT
-          ) {
-
-            messaggio =
-              "Getting your GPS location took too long.";
-
-          }
-
-          mostraMessaggio(
-            messaggio,
-            "error"
-          );
-
-          resetSlider();
-
-        },
-
-
-        // ------------------------------------------------------
-        // GPS OPTIONS
-        // ------------------------------------------------------
-
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-
-      );
+      slider.classList.remove("disabled");
 
     }
 
 
     // ==========================================================
-    // SLIDER LOGIC
+    // LETTURA POSIZIONE CURSORE
     // ==========================================================
-
-    const slider =
-      document.getElementById("openSlider");
-
-    const handle =
-      document.getElementById("sliderHandle");
-
-    let dragging = false;
-
 
     function getPosition(event) {
 
-      if (event.touches) {
-        return event.touches[0].clientX;
-      }
-
       return event.clientX;
+
     }
 
+
+    // ==========================================================
+    // INIZIO DRAG
+    // ==========================================================
 
     function startDrag(event) {
 
@@ -624,8 +293,13 @@
       );
 
       event.preventDefault();
+
     }
 
+
+    // ==========================================================
+    // MOVIMENTO SLIDER
+    // ==========================================================
 
     function moveDrag(event) {
 
@@ -640,7 +314,9 @@
         handle.offsetWidth;
 
       const max =
-        rect.width - handleWidth - 12;
+        rect.width -
+        handleWidth -
+        12;
 
       let x =
         getPosition(event) -
@@ -657,8 +333,13 @@
         `${x}px`;
 
       event.preventDefault();
+
     }
 
+
+    // ==========================================================
+    // FINE DRAG
+    // ==========================================================
 
     function endDrag() {
 
@@ -675,14 +356,23 @@
         handle.offsetWidth;
 
       const max =
-        rect.width - handleWidth - 12;
+        rect.width -
+        handleWidth -
+        12;
 
       const current =
-        parseFloat(handle.style.left) || 6;
+        parseFloat(
+          handle.style.left
+        ) || 6;
 
 
-      // Slider completed
-      if (current >= max * 0.90) {
+      // --------------------------------------------------------
+      // SLIDER COMPLETATO
+      // --------------------------------------------------------
+
+      if (
+        current >= max * 0.90
+      ) {
 
         handle.style.left =
           `${max}px`;
@@ -698,16 +388,178 @@
     }
 
 
-    function resetSlider() {
+    // ==========================================================
+    // APERTURA CANCELLO
+    // ==========================================================
 
-      dragging = false;
+    async function apriCancello() {
 
-      handle.style.left = "6px";
+      slider.classList.add("disabled");
 
-      slider.classList.remove("disabled");
+      mostraMessaggio(
+        "Checking access...",
+        "info"
+      );
+
+
+      // ========================================================
+      // 1. CONTROLLO CONFIGURAZIONE WORKER
+      // ========================================================
+
+      if (
+        !WORKER_URL ||
+        WORKER_URL.includes("INSERISCI_QUI")
+      ) {
+
+        mostraMessaggio(
+          "Worker configuration missing.",
+          "error"
+        );
+
+        resetSlider();
+
+        return;
+
+      }
+
+
+      // ========================================================
+      // 2. LETTURA GUEST CODE DALL'URL
+      // ========================================================
+
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      const pass =
+        params.get("pass");
+
+
+      // ========================================================
+      // 3. CONTROLLO PRESENZA GUEST CODE
+      // ========================================================
+
+      if (!pass) {
+
+        mostraMessaggio(
+          "Invalid link.",
+          "error"
+        );
+
+        resetSlider();
+
+        return;
+
+      }
+
+
+      // ========================================================
+      // 4. INVIO AL CLOUDFLARE WORKER
+      // ========================================================
+
+      try {
+
+        const response =
+          await fetch(
+            WORKER_URL,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json"
+              },
+
+              body: JSON.stringify({
+                pass: pass
+              })
+            }
+          );
+
+
+        // ======================================================
+        // 5. LETTURA RISPOSTA
+        // ======================================================
+
+        let data = null;
+
+        try {
+
+          data =
+            await response.json();
+
+        } catch (error) {
+
+          data = null;
+
+        }
+
+
+        // ======================================================
+        // 6. ACCESSO CONSENTITO
+        // ======================================================
+
+        if (
+          response.ok &&
+          data &&
+          data.success
+        ) {
+
+          mostraMessaggio(
+            data.message ||
+            "Gate opened!",
+            "ok"
+          );
+
+        }
+
+
+        // ======================================================
+        // 7. ACCESSO NEGATO
+        // ======================================================
+
+        else {
+
+          mostraMessaggio(
+            data?.message ||
+            "Access denied.",
+            "error"
+          );
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Worker communication error:",
+          error
+        );
+
+        mostraMessaggio(
+          "Connection error.",
+          "error"
+        );
+
+      }
+
+
+      // ========================================================
+      // 8. RESET SLIDER
+      // ========================================================
+
+      finally {
+
+        resetSlider();
+
+      }
 
     }
 
+
+    // ==========================================================
+    // EVENTI SLIDER
+    // ==========================================================
 
     handle.addEventListener(
       "pointerdown",
@@ -734,3 +586,4 @@
 </body>
 
 </html>
+```
