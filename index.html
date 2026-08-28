@@ -1,6 +1,5 @@
-```html
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -10,7 +9,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Apertura Cancello</title>
+  <title>Gate Opening</title>
 
   <style>
 
@@ -61,43 +60,92 @@
       color: #555;
     }
 
-    button {
+    /* ========================================================
+       SLIDER
+       ======================================================== */
+
+    .slider {
+      position: relative;
+
       width: 100%;
+      height: 64px;
+
+      margin-top: 25px;
 
       background: #007bff;
 
+      border-radius: 32px;
+
+      overflow: hidden;
+
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .slider-text {
+      position: absolute;
+
+      top: 50%;
+      left: 0;
+
+      width: 100%;
+
+      transform: translateY(-50%);
+
       color: white;
 
-      border: none;
-
-      border-radius: 12px;
-
-      padding: 20px;
-
-      font-size: 20px;
-
+      font-size: 18px;
       font-weight: bold;
 
-      cursor: pointer;
+      pointer-events: none;
+    }
+
+    .slider-handle {
+      position: absolute;
+
+      top: 6px;
+      left: 6px;
+
+      width: 52px;
+      height: 52px;
+
+      background: white;
+
+      border-radius: 50%;
 
       box-shadow:
-        0 4px 8px rgba(0, 0, 0, 0.15);
+        0 3px 8px rgba(0, 0, 0, 0.25);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      color: #007bff;
+
+      font-size: 24px;
+      font-weight: bold;
+
+      cursor: grab;
+
+      touch-action: none;
 
       transition:
-        background 0.2s,
+        left 0.1s,
         transform 0.1s;
     }
 
-    button:active {
-      transform: scale(0.98);
+    .slider-handle:active {
+      cursor: grabbing;
+      transform: scale(0.96);
     }
 
-    button:disabled {
+    .slider.disabled {
       background: #bdbdbd;
+    }
 
+    .slider.disabled .slider-handle {
       cursor: not-allowed;
-
-      box-shadow: none;
+      color: #888;
     }
 
     #status {
@@ -131,18 +179,35 @@
 
   <div class="card">
 
-    <h1>🚪 Cancello pedonale</h1>
+    <h1>🚪 Pedestrian Gate</h1>
 
     <p>
-      Premi il pulsante quando sei davanti al cancello.
+      Slide the button when you are standing in front of the gate.
     </p>
 
-    <button
-      id="btnOpen"
-      onclick="apriCancello()"
+
+    <!-- ======================================================
+         SLIDER
+         ====================================================== -->
+
+    <div
+      id="openSlider"
+      class="slider"
     >
-      APRI CANCELLO
-    </button>
+
+      <div class="slider-text">
+        Slide to open →
+      </div>
+
+      <div
+        id="sliderHandle"
+        class="slider-handle"
+      >
+        →
+      </div>
+
+    </div>
+
 
     <div id="status"></div>
 
@@ -152,7 +217,7 @@
   <script>
 
     // ==========================================================
-    // CONFIGURAZIONE
+    // CONFIGURATION
     // ==========================================================
 
     // URL DEL TUO WORKER CLOUDFLARE
@@ -161,19 +226,19 @@
 
 
     // ==========================================================
-    // COORDINATE DEL CANCELLO
+    // COORDINATES OF THE GATE
     // ==========================================================
 
     const TARGET_LAT = 43.8206059;
     const TARGET_LON = 11.1387121;
 
 
-    // Distanza massima consentita
+    // Maximum allowed distance
     const MAX_DISTANCE_METERS = 75;
 
 
     // ==========================================================
-    // CALCOLO DISTANZA GPS
+    // CALCULATE GPS DISTANCE
     // ==========================================================
 
     function calcolaDistanza(
@@ -215,7 +280,7 @@
 
 
     // ==========================================================
-    // MESSAGGIO
+    // MESSAGE
     // ==========================================================
 
     function mostraMessaggio(
@@ -233,17 +298,20 @@
 
 
     // ==========================================================
-    // APERTURA CANCELLO
+    // OPEN GATE
     // ==========================================================
 
     async function apriCancello() {
 
-      const btn =
-        document.getElementById("btnOpen");
+      const slider =
+        document.getElementById("openSlider");
+
+      const handle =
+        document.getElementById("sliderHandle");
 
 
       // --------------------------------------------------------
-      // 1. CONTROLLO CONFIGURAZIONE WORKER
+      // 1. CHECK WORKER CONFIGURATION
       // --------------------------------------------------------
 
       if (
@@ -252,16 +320,18 @@
       ) {
 
         mostraMessaggio(
-          "Configurazione Worker mancante.",
+          "Worker configuration missing.",
           "error"
         );
+
+        resetSlider();
 
         return;
       }
 
 
       // --------------------------------------------------------
-      // 2. RECUPERO PASS DAL LINK
+      // 2. GET PASS FROM URL
       // --------------------------------------------------------
 
       const params =
@@ -276,41 +346,45 @@
       if (!pass) {
 
         mostraMessaggio(
-          "Link non valido.",
+          "Invalid link.",
           "error"
         );
+
+        resetSlider();
 
         return;
       }
 
 
       // --------------------------------------------------------
-      // 3. CONTROLLO SUPPORTO GPS
+      // 3. CHECK GPS SUPPORT
       // --------------------------------------------------------
 
       if (!navigator.geolocation) {
 
         mostraMessaggio(
-          "La geolocalizzazione non è supportata.",
+          "Geolocation is not supported.",
           "error"
         );
+
+        resetSlider();
 
         return;
       }
 
 
-      // Disabilitiamo il pulsante durante la procedura
-      btn.disabled = true;
+      // Disable slider during the procedure
+      slider.classList.add("disabled");
 
 
       mostraMessaggio(
-        "Verifica della posizione...",
+        "Checking your location...",
         "info"
       );
 
 
       // --------------------------------------------------------
-      // 4. RICHIESTA POSIZIONE
+      // 4. REQUEST LOCATION
       // --------------------------------------------------------
 
       navigator.geolocation.getCurrentPosition(
@@ -325,7 +399,7 @@
 
 
           // ----------------------------------------------------
-          // 5. CONTROLLO GPS LOCALE
+          // 5. LOCAL GPS CHECK
           // ----------------------------------------------------
 
           const distanza =
@@ -343,22 +417,22 @@
           ) {
 
             mostraMessaggio(
-              `Sei troppo lontano (${Math.round(distanza)} m).`,
+              `You are too far away (${Math.round(distanza)} m).`,
               "error"
             );
 
-            btn.disabled = false;
+            resetSlider();
 
             return;
           }
 
 
           // ----------------------------------------------------
-          // 6. INVIO AL WORKER
+          // 6. SEND REQUEST TO WORKER
           // ----------------------------------------------------
 
           mostraMessaggio(
-            "Apertura in corso...",
+            "Opening gate...",
             "info"
           );
 
@@ -385,7 +459,7 @@
 
 
             // --------------------------------------------------
-            // 7. LETTURA RISPOSTA WORKER
+            // 7. READ WORKER RESPONSE
             // --------------------------------------------------
 
             let data = null;
@@ -402,7 +476,7 @@
 
 
             // --------------------------------------------------
-            // 8. RISULTATO
+            // 8. RESULT
             // --------------------------------------------------
 
             if (
@@ -412,7 +486,7 @@
             ) {
 
               mostraMessaggio(
-                "Cancello aperto!",
+                "Gate opened!",
                 "ok"
               );
 
@@ -420,7 +494,7 @@
 
               mostraMessaggio(
                 data?.message ||
-                "Accesso non autorizzato.",
+                "Access denied.",
                 "error"
               );
             }
@@ -429,18 +503,18 @@
           } catch (error) {
 
             console.error(
-              "Errore comunicazione Worker:",
+              "Worker communication error:",
               error
             );
 
             mostraMessaggio(
-              "Errore di connessione.",
+              "Connection error.",
               "error"
             );
 
           } finally {
 
-            btn.disabled = false;
+            resetSlider();
 
           }
 
@@ -448,18 +522,18 @@
 
 
         // ------------------------------------------------------
-        // ERRORE GPS
+        // GPS ERROR
         // ------------------------------------------------------
 
         (error) => {
 
           console.error(
-            "Errore GPS:",
+            "GPS error:",
             error
           );
 
           let messaggio =
-            "Impossibile ottenere la posizione.";
+            "Unable to get your location.";
 
           if (
             error.code ===
@@ -467,7 +541,7 @@
           ) {
 
             messaggio =
-              "Devi autorizzare la posizione GPS per aprire.";
+              "You must allow location access to open the gate.";
 
           } else if (
             error.code ===
@@ -475,7 +549,7 @@
           ) {
 
             messaggio =
-              "Posizione GPS non disponibile.";
+              "GPS location is not available.";
 
           } else if (
             error.code ===
@@ -483,7 +557,7 @@
           ) {
 
             messaggio =
-              "Il rilevamento GPS ha impiegato troppo tempo.";
+              "Getting your GPS location took too long.";
 
           }
 
@@ -492,12 +566,13 @@
             "error"
           );
 
-          btn.disabled = false;
+          resetSlider();
+
         },
 
 
         // ------------------------------------------------------
-        // OPZIONI GPS
+        // GPS OPTIONS
         // ------------------------------------------------------
 
         {
@@ -510,9 +585,152 @@
 
     }
 
+
+    // ==========================================================
+    // SLIDER LOGIC
+    // ==========================================================
+
+    const slider =
+      document.getElementById("openSlider");
+
+    const handle =
+      document.getElementById("sliderHandle");
+
+    let dragging = false;
+
+
+    function getPosition(event) {
+
+      if (event.touches) {
+        return event.touches[0].clientX;
+      }
+
+      return event.clientX;
+    }
+
+
+    function startDrag(event) {
+
+      if (
+        slider.classList.contains("disabled")
+      ) {
+        return;
+      }
+
+      dragging = true;
+
+      handle.setPointerCapture?.(
+        event.pointerId
+      );
+
+      event.preventDefault();
+    }
+
+
+    function moveDrag(event) {
+
+      if (!dragging) {
+        return;
+      }
+
+      const rect =
+        slider.getBoundingClientRect();
+
+      const handleWidth =
+        handle.offsetWidth;
+
+      const max =
+        rect.width - handleWidth - 12;
+
+      let x =
+        getPosition(event) -
+        rect.left -
+        handleWidth / 2;
+
+      x =
+        Math.max(
+          6,
+          Math.min(x, max)
+        );
+
+      handle.style.left =
+        `${x}px`;
+
+      event.preventDefault();
+    }
+
+
+    function endDrag() {
+
+      if (!dragging) {
+        return;
+      }
+
+      dragging = false;
+
+      const rect =
+        slider.getBoundingClientRect();
+
+      const handleWidth =
+        handle.offsetWidth;
+
+      const max =
+        rect.width - handleWidth - 12;
+
+      const current =
+        parseFloat(handle.style.left) || 6;
+
+
+      // Slider completed
+      if (current >= max * 0.90) {
+
+        handle.style.left =
+          `${max}px`;
+
+        apriCancello();
+
+      } else {
+
+        resetSlider();
+
+      }
+
+    }
+
+
+    function resetSlider() {
+
+      dragging = false;
+
+      handle.style.left = "6px";
+
+      slider.classList.remove("disabled");
+
+    }
+
+
+    handle.addEventListener(
+      "pointerdown",
+      startDrag
+    );
+
+    handle.addEventListener(
+      "pointermove",
+      moveDrag
+    );
+
+    handle.addEventListener(
+      "pointerup",
+      endDrag
+    );
+
+    handle.addEventListener(
+      "pointercancel",
+      endDrag
+    );
+
   </script>
 
 </body>
 
 </html>
-```
