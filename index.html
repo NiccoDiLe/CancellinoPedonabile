@@ -9,7 +9,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Gate Opening</title>
+  <title>Pedestrian Gate</title>
 
   <style>
 
@@ -43,7 +43,7 @@
 
       background: white;
 
-      padding: 30px 25px;
+      padding: 25px;
 
       border-radius: 18px;
 
@@ -51,14 +51,38 @@
         0 5px 20px rgba(0, 0, 0, 0.10);
     }
 
+    .gate-image {
+      width: 100%;
+      height: 200px;
+
+      object-fit: cover;
+      object-position: center;
+
+      display: block;
+
+      border-radius: 14px;
+
+      margin-bottom: 22px;
+    }
+
     h1 {
       margin-top: 0;
+      margin-bottom: 10px;
+
       font-size: 26px;
     }
 
     p {
+      margin-top: 0;
+
       color: #555;
+
+      line-height: 1.5;
     }
+
+    /* ========================================================
+       SLIDER
+       ======================================================== */
 
     .slider {
       position: relative;
@@ -132,6 +156,7 @@
 
     .slider-handle:active {
       cursor: grabbing;
+
       transform: scale(0.96);
     }
 
@@ -141,6 +166,7 @@
 
     .slider.disabled .slider-handle {
       cursor: not-allowed;
+
       color: #888;
     }
 
@@ -175,12 +201,28 @@
 
   <div class="card">
 
-    <h1>🚪 Pedestrian Gate</h1>
+    <!-- ======================================================
+         REAL GATE IMAGE
+         ====================================================== -->
+
+    <img
+      src="gate.jpg"
+      alt="Pedestrian gate"
+      class="gate-image"
+    >
+
+
+    <h1>Pedestrian Gate</h1>
+
 
     <p>
       Slide the button to open the gate.
     </p>
 
+
+    <!-- ======================================================
+         SLIDER
+         ====================================================== -->
 
     <div
       id="openSlider"
@@ -209,7 +251,7 @@
   <script>
 
     // ==========================================================
-    // CLOUDFLARE WORKER
+    // CLOUDFLARE WORKER URL
     // ==========================================================
 
     const WORKER_URL =
@@ -217,7 +259,7 @@
 
 
     // ==========================================================
-    // ELEMENTI SLIDER
+    // ELEMENTS
     // ==========================================================
 
     const slider =
@@ -230,20 +272,21 @@
 
 
     // ==========================================================
-    // MESSAGGIO
+    // SHOW MESSAGE
     // ==========================================================
 
-    function mostraMessaggio(
-      testo,
-      tipo = "info"
+    function showMessage(
+      text,
+      type = "info"
     ) {
 
       const status =
         document.getElementById("status");
 
-      status.innerText = testo;
+      status.innerText = text;
 
-      status.className = tipo;
+      status.className = type;
+
     }
 
 
@@ -263,7 +306,7 @@
 
 
     // ==========================================================
-    // LETTURA POSIZIONE CURSORE
+    // GET POINTER POSITION
     // ==========================================================
 
     function getPosition(event) {
@@ -274,7 +317,7 @@
 
 
     // ==========================================================
-    // INIZIO DRAG
+    // START DRAG
     // ==========================================================
 
     function startDrag(event) {
@@ -297,7 +340,7 @@
 
 
     // ==========================================================
-    // MOVIMENTO SLIDER
+    // MOVE SLIDER
     // ==========================================================
 
     function moveDrag(event) {
@@ -337,7 +380,7 @@
 
 
     // ==========================================================
-    // FINE DRAG
+    // END DRAG
     // ==========================================================
 
     function endDrag() {
@@ -365,9 +408,9 @@
         ) || 6;
 
 
-      // --------------------------------------------------------
-      // SLIDER COMPLETATO
-      // --------------------------------------------------------
+      // ========================================================
+      // SLIDER COMPLETED
+      // ========================================================
 
       if (
         current >= max * 0.90
@@ -376,7 +419,7 @@
         handle.style.left =
           `${max}px`;
 
-        apriCancello();
+        openGate();
 
       } else {
 
@@ -388,21 +431,16 @@
 
 
     // ==========================================================
-    // APERTURA CANCELLO
+    // OPEN GATE
     // ==========================================================
 
-    async function apriCancello() {
+    async function openGate() {
 
       slider.classList.add("disabled");
 
-      mostraMessaggio(
-        "Checking access...",
-        "info"
-      );
-
 
       // ========================================================
-      // 1. CONTROLLO CONFIGURAZIONE WORKER
+      // CHECK WORKER URL
       // ========================================================
 
       if (
@@ -410,7 +448,7 @@
         WORKER_URL.includes("INSERISCI_QUI")
       ) {
 
-        mostraMessaggio(
+        showMessage(
           "Worker configuration missing.",
           "error"
         );
@@ -423,7 +461,7 @@
 
 
       // ========================================================
-      // 2. LETTURA GUEST CODE DALL'URL
+      // GET GUEST PASS FROM URL
       // ========================================================
 
       const params =
@@ -436,12 +474,12 @@
 
 
       // ========================================================
-      // 3. CONTROLLO PRESENZA GUEST CODE
+      // CHECK GUEST PASS EXISTS
       // ========================================================
 
       if (!pass) {
 
-        mostraMessaggio(
+        showMessage(
           "Invalid link.",
           "error"
         );
@@ -454,8 +492,14 @@
 
 
       // ========================================================
-      // 4. INVIO AL CLOUDFLARE WORKER
+      // SEND REQUEST TO CLOUDFLARE
       // ========================================================
+
+      showMessage(
+        "Checking access...",
+        "info"
+      );
+
 
       try {
 
@@ -472,12 +516,13 @@
               body: JSON.stringify({
                 pass: pass
               })
+
             }
           );
 
 
         // ======================================================
-        // 5. LETTURA RISPOSTA
+        // READ RESPONSE
         // ======================================================
 
         let data = null;
@@ -495,7 +540,7 @@
 
 
         // ======================================================
-        // 6. ACCESSO CONSENTITO
+        // SUCCESS
         // ======================================================
 
         if (
@@ -504,7 +549,7 @@
           data.success
         ) {
 
-          mostraMessaggio(
+          showMessage(
             data.message ||
             "Gate opened!",
             "ok"
@@ -514,12 +559,12 @@
 
 
         // ======================================================
-        // 7. ACCESSO NEGATO
+        // ACCESS DENIED / ERROR
         // ======================================================
 
         else {
 
-          mostraMessaggio(
+          showMessage(
             data?.message ||
             "Access denied.",
             "error"
@@ -535,8 +580,8 @@
           error
         );
 
-        mostraMessaggio(
-          "Connection error.",
+        showMessage(
+          "Unable to communicate with the gate.",
           "error"
         );
 
@@ -544,7 +589,7 @@
 
 
       // ========================================================
-      // 8. RESET SLIDER
+      // RESET
       // ========================================================
 
       finally {
@@ -557,7 +602,7 @@
 
 
     // ==========================================================
-    // EVENTI SLIDER
+    // SLIDER EVENTS
     // ==========================================================
 
     handle.addEventListener(
